@@ -9,6 +9,7 @@ class Saving extends Model
 {
 
     use HasFactory;
+    protected $table='saving';
     protected $primaryKey='saving_id';
     protected $fillable=[
         'goal',
