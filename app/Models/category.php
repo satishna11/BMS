@@ -12,7 +12,6 @@ class category extends Model
     protected $primaryKey='category_id';
     protected $fillabele=[
         'name',
-
     ];
 
 }

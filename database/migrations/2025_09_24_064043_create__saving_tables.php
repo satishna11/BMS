@@ -6,31 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('incomes', function (Blueprint $table) {
-            $table->id('income_id');
+        Schema::create('saving', function (Blueprint $table) {
+            $table->id('saving_id');
+            $table->string('goal');
+            $table->decimal('target_amount',10,2);
             $table->decimal('amount',10,2);
-            $table->string('source');
-            $table->date('date');
             $table->unsignedBigInteger('user_id');
             $table->timestamps();
 
             $table->foreign('user_id')
                   ->references('id')
                   ->on('users')
-                  ->onDelete('cascade');
+                  ->delete('cascade');
         });
     }
-
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('incomes');
+        Schema::dropIfExists('saving');
     }
 };

@@ -9,7 +9,7 @@ class Income extends Model
 {
     use HasFactory;
 
-
+protected $table='incomes';
     protected $primaryKey = "income_id"; // corrected name
 
     protected $fillable = [
