@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use App\Models\User;
 class Income extends Model
 {
     use HasFactory;
@@ -28,4 +29,5 @@ protected $table='incomes';
         // If users table has PK = user_id
         // return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
+
 }
