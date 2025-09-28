@@ -18,5 +18,9 @@ class Category extends Model
     {
         return $this->hasMany(Expense::class,'category_id','category_id');
     }
+       public function budget()
+    {
+        return $this->hasMany(Budget::class,'budget_id','budget_id');
+    }
 
 }
