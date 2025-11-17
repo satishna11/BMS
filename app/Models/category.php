@@ -4,23 +4,28 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Expense;
+use App\Models\Budget;
 
 class Category extends Model
 {
-    protected $table='categories';
     use HasFactory;
 
-    protected $primaryKey='category_id';
-    protected $fillable=[
+    protected $table = 'categories';
+    protected $primaryKey = 'category_id';
+    protected $fillable = [
         'name'
     ];
-   public function expense()
+
+    // One category has many expenses
+    public function expense()
     {
-        return $this->hasMany(Expense::class,'category_id','category_id');
-    }
-       public function budget()
-    {
-        return $this->hasMany(Budget::class,'budget_id','budget_id');
+        return $this->hasMany(Expense::class, 'category_id', 'category_id');
     }
 
+    // One category has many budgets
+    public function budget()
+    {
+        return $this->hasMany(Budget::class, 'category_id', 'category_id');
+    }
 }

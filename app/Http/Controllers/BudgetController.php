@@ -1,80 +1,155 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use App\Models\Expense;
 use App\Models\Budget;
-use App\Models\User;
 use App\Models\Category;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Routing\Controller;
 class BudgetController extends Controller
 {
-    // Show all budgets
+    // Require authentication
+    public function __construct()
+    {
+        $this->middleware('auth:sanctum');
+    }
+
+    // GET /api/budgets - Get all budgets for logged-in user
     public function index()
     {
-        $budgets = Budget::with(['user', 'category'])->get();
-        return view('budget.index', compact('budgets'));
+        $budgets = Budget::with('category')
+            ->where('user_id', Auth::id())
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $budgets
+        ]);
     }
 
-    // Show form to create new budget
-    public function create()
-    {
-        $users = User::all();
-        $categories = Category::all();
-        return view('budget.create', compact('users', 'categories'));
-    }
+    // POST /api/budgets/save - Create or update a budget
 
-    // Store a new budget
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,user_id',
-            'category_id' => 'required|exists:categories,category_id',
-            'month' => 'required|string',
-            'year' => 'required|integer',
-            'planned_budget' => 'required|numeric|min:0',
-            'spent_budget' => 'nullable|numeric|min:0', // optional, usually 0 at start
+public function saveBudget(Request $request)
+{
+    $validated = $request->validate([
+        'budget_id'   => 'nullable|integer',
+        'category_id' => 'required|exists:categories,category_id',
+        'month'       => 'required|string',
+        'year'        => 'required|digits:4',
+        'planned_budget' => 'required|numeric|min:0',
+    ]);
+
+    $userId = Auth::id();
+
+    // Convert month name to number (1-12)
+    $monthNumber = date('m', strtotime($validated['month'] . ' 1'));
+
+    // Calculate spent_budget from expenses
+    $spent = Expense::where('user_id', $userId)
+        ->where('category_id', $validated['category_id'])
+        ->whereMonth('date', $monthNumber)
+        ->whereYear('date', $validated['year'])
+        ->sum('amount');
+
+    $remaining = $validated['planned_budget'] - $spent;
+
+    // Only two valid values for ENUM
+    $status = $remaining >= 0 ? 'On Track' : 'Overspent';
+
+    // CREATE
+    if (!isset($validated['budget_id']) || $validated['budget_id'] == 0) {
+        $budget = Budget::create([
+            'user_id'       => $userId,
+            'category_id'   => $validated['category_id'],
+            'month'         => $validated['month'],
+            'year'          => $validated['year'],
+            'planned_budget'=> $validated['planned_budget'],
+            'spent_budget'  => $spent,
+            'remaining'     => $remaining,
+            'status'        => $status,
         ]);
 
-        Budget::create($validated);
-        // ✅ Remaining and status calculated automatically in Budget model
-
-        return redirect()->route('budget.index')->with('success', 'Budget created successfully!');
+        return response()->json([
+            'status'  => true,
+            'message' => 'Budget created successfully!',
+            'data'    => $budget
+        ], 201); // ✅ 201 CREATED
     }
 
-    // Show form to edit a budget
-    public function edit($id)
-    {
-        $budget = Budget::findOrFail($id);
-        $users = User::all();
-        $categories = Category::all();
-        return view('budget.edit', compact('budget', 'users', 'categories'));
+    // UPDATE
+    $budget = Budget::where('budget_id', $validated['budget_id'])
+        ->where('user_id', $userId)
+        ->first();
+
+    if (!$budget) {
+        return response()->json([
+            'status'  => false,
+            'message' => 'Budget not found or not yours'
+        ], 404);
     }
 
-    // Update a budget
-    public function update(Request $request, $id)
-    {
-        $budget = Budget::findOrFail($id);
+    $budget->update([
+        'category_id'   => $validated['category_id'],
+        'month'         => $validated['month'],
+        'year'          => $validated['year'],
+        'planned_budget'=> $validated['planned_budget'],
+        'spent_budget'  => $spent,
+        'remaining'     => $remaining,
+        'status'        => $status,
+    ]);
 
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,user_id',
-            'category_id' => 'required|exists:categories,category_id',
-            'month' => 'required|string',
-            'year' => 'required|integer',
-            'planned_budget' => 'required|numeric|min:0',
-            'spent_budget' => 'nullable|numeric|min:0',
+    return response()->json([
+        'status'  => true,
+        'message' => 'Budget updated successfully!',
+        'data'    => $budget
+    ], 200);
+}
+
+
+
+
+
+    // GET /api/budgets/{id} - Get single budget of logged-in user
+    public function show($id)
+    {
+        $budget = Budget::with('category')
+            ->where('budget_id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$budget) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Budget not found or not yours'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $budget
         ]);
-
-        $budget->update($validated);
-        // ✅ Remaining and status recalculated automatically
-
-        return redirect()->route('budget.index')->with('success', 'Budget updated successfully!');
     }
 
-    // Delete a budget
+    // DELETE /api/budgets/{id} - Delete a budget
     public function destroy($id)
     {
-        Budget::findOrFail($id)->delete();
-        return redirect()->route('budget.index')->with('success', 'Budget deleted successfully!');
+        $budget = Budget::where('budget_id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$budget) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Budget not found or not yours'
+            ], 404);
+        }
+
+        $budget->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Budget deleted successfully'
+        ]);
     }
 }
