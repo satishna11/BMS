@@ -64,7 +64,6 @@ class ExpenseController extends Controller
 
         return redirect()->route('expense.index')->with('success', 'Expense updated successfully!');
     }
-
     public function destroy($id)
     {
         $expense = Expense::findOrFail($id);
