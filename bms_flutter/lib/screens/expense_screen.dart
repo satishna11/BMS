@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../models/expense.dart';
+import '../services/expense_service.dart';
 
 class ExpenseScreen extends StatefulWidget {
   const ExpenseScreen({super.key});
@@ -10,6 +10,14 @@ class ExpenseScreen extends StatefulWidget {
 }
 
 class _ExpenseScreenState extends State<ExpenseScreen> {
+  // ===== Form controllers =====
+  final TextEditingController titleController = TextEditingController();
+  final TextEditingController amountController = TextEditingController();
+  final TextEditingController dateController = TextEditingController();
+
+  String selectedCategory = 'Grocery';
+  String selectedPayment = 'Cash';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,16 +62,33 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    inputField("Expense Title"),
-                    dropdownField("Category", [
-                      "Grocery",
-                      "Shopping",
-                      "Education",
-                      "Transport",
-                    ]),
-                    inputField("Amount"),
-                    dropdownField("Payment Method", ["Cash", "Card", "Online"]),
-                    inputField("Date"),
+                    inputField("Expense Title", controller: titleController),
+                    dropdownField(
+                      "Category",
+                      ["Grocery", "Shopping", "Education", "Transport"],
+                      value: selectedCategory,
+                      onChanged: (val) {
+                        setState(() => selectedCategory = val!);
+                      },
+                    ),
+                    inputField(
+                      "Amount",
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                    ),
+                    dropdownField(
+                      "Payment Method",
+                      ["Cash", "Card", "Online"],
+                      value: selectedPayment,
+                      onChanged: (val) {
+                        setState(() => selectedPayment = val!);
+                      },
+                    ),
+                    inputField(
+                      "Date",
+                      controller: dateController,
+                      hint: "YYYY-MM-DD",
+                    ),
 
                     const SizedBox(height: 20),
 
@@ -71,7 +96,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       width: 120,
                       height: 40,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: submitExpense,
                         child: const Text("Submit"),
                       ),
                     ),
@@ -110,7 +135,12 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   }
 
   // ===== Form Helpers =====
-  Widget inputField(String label) {
+  Widget inputField(
+    String label, {
+    TextEditingController? controller,
+    TextInputType keyboardType = TextInputType.text,
+    String? hint,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -118,9 +148,12 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           SizedBox(width: 140, child: Text(label)),
           Expanded(
             child: TextField(
-              decoration: const InputDecoration(
+              controller: controller,
+              keyboardType: keyboardType,
+              decoration: InputDecoration(
+                hintText: hint,
                 isDense: true,
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
           ),
@@ -129,14 +162,20 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
-  Widget dropdownField(String label, List<String> items) {
+  Widget dropdownField(
+    String label,
+    List<String> items, {
+    String? value,
+    void Function(String?)? onChanged,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           SizedBox(width: 140, child: Text(label)),
           Expanded(
-            child: DropdownButtonFormField(
+            child: DropdownButtonFormField<String>(
+              value: value,
               decoration: const InputDecoration(
                 isDense: true,
                 border: OutlineInputBorder(),
@@ -144,11 +183,43 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               items: items
                   .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
-              onChanged: (value) {},
+              onChanged: onChanged,
             ),
           ),
         ],
       ),
     );
+  }
+
+  // ===== Submit function =====
+  void submitExpense() async {
+    final expense = Expense(
+      title: titleController.text,
+      category: selectedCategory,
+      amount: double.tryParse(amountController.text) ?? 0,
+      paymentMethod: selectedPayment,
+      date: dateController.text,
+    );
+
+    bool success = await ExpenseService.addExpense(expense);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Expense added successfully')),
+      );
+
+      // Clear form
+      titleController.clear();
+      amountController.clear();
+      dateController.clear();
+      setState(() {
+        selectedCategory = 'Grocery';
+        selectedPayment = 'Cash';
+      });
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to add expense')));
+    }
   }
 }
