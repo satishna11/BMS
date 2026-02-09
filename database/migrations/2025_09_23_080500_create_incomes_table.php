@@ -10,20 +10,17 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-    {
-        Schema::create('incomes', function (Blueprint $table) {
-            $table->id('income_id');
-            $table->decimal('amount',10,2);
-            $table->string('source');
-            $table->date('date');
-            $table->unsignedBigInteger('user_id');
-            $table->timestamps();
+    {Schema::create('incomes', function (Blueprint $table) {
+    $table->bigIncrements('income_id');
+    $table->unsignedBigInteger('user_id');
+    $table->decimal('amount', 10, 2);
+    $table->string('source');
+    $table->date('date');
+    $table->timestamps();
 
-            $table->foreign('user_id')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('cascade');
-        });
+    $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+});
+
     }
 
     /**

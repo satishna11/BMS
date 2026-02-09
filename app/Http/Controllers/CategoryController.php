@@ -2,63 +2,110 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
 use Illuminate\Http\Request;
+use App\Models\Category;
 
 class CategoryController extends Controller
 {
+    /**
+     * List all categories
+     */
     public function index()
     {
-        $categories = Category::all();
-        return view('category.index', compact('categories'));
+        $categories = Category::orderBy('category_id', 'DESC')->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $categories
+        ]);
     }
 
-    public function create()
+    /**
+     * Show single category
+     */
+    public function show($id)
     {
-        return view('category.create');
+        $category = Category::where('category_id', $id)->firstOrFail();
+
+        return response()->json([
+            'status' => true,
+            'data' => $category
+        ]);
     }
 
-    public function store(Request $request)
+    /**
+     * Load form (if needed for web)
+     */
+    public function form($id = null)
+    {
+        $category = null;
+
+        if ($id) {
+            $category = Category::where('category_id', $id)->firstOrFail();
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $category
+        ]);
+    }
+
+    /**
+     * Create or Update Category
+     */
+    public function saveCategory(Request $request)
     {
         $validated = $request->validate([
+            'id' => 'nullable|integer', // optional for update
             'name' => 'required|string|max:100',
         ]);
 
-        Category::create($validated);
+        // CREATE
+        if (!isset($validated['id']) || $validated['id'] == 0) {
+            $category = Category::create([
+                'name' => $validated['name'],
+            ]);
 
-        return redirect()->route('category.index')->with('success', 'Category created successfully!');
-    }
+            return response()->json([
+                'status' => true,
+                'message' => 'Category created successfully!',
+                'data' => $category
+            ], 201);
+        }
 
-    public function show(string $id)
-    {
-        $category = Category::findOrFail($id);
-        return view('category.show', compact('category'));
-    }
+        // UPDATE
+        $category = Category::where('category_id', $validated['id'])->first();
 
-    public function edit(string $id)
-    {
-        $category = Category::findOrFail($id);
-        return view('category.edit', compact('category'));
-    }
+        if (!$category) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Category not found'
+            ], 404);
+        }
 
-    public function update(Request $request, string $id)
-    {
-        $category = Category::findOrFail($id);
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:100',
+        $category->update([
+            'name' => $validated['name'],
         ]);
 
-        $category->update($validated);
-
-        return redirect()->route('category.index')->with('success', 'Category updated successfully!');
+        return response()->json([
+            'status' => true,
+            'message' => 'Category updated successfully!',
+            'data' => $category
+        ], 200);
     }
 
-    public function destroy(string $id)
+
+    /**
+     * Delete category
+     */
+    public function destroy($id)
     {
-        $category = Category::findOrFail($id);
+        $category = Category::where('category_id', $id)->firstOrFail();
         $category->delete();
 
-        return redirect()->route('category.index')->with('success', 'Category deleted successfully!');
+        return response()->json([
+            'status' => true,
+            'message' => 'Category deleted successfully!'
+        ]);
     }
 }

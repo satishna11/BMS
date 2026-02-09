@@ -3,78 +3,121 @@
 namespace App\Http\Controllers;
 
 use App\Models\Saving;
-use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use \Illuminate\Routing\Controller;
 
 class SavingController extends Controller
 {
-    // Show all savings
+    // Require authentication for all actions
+    public function __construct()
+    {
+        $this->middleware('auth:sanctum');
+    }
+
+    // GET /api/savings - Get all savings for logged-in user
     public function index()
     {
-        $savings = Saving::with('user')->get(); // eager load user
-        return view('saving.index', compact('savings'));
+        $savings = Saving::where('user_id', Auth::id())->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $savings
+        ]);
     }
 
-    // Show form to create a new saving
-    public function create()
-    {
-        $users = User::all(); // get all users for dropdown
-        return view('saving.create', compact('users'));
-    }
-
-    // Store a new saving
-    public function store(Request $request)
+    // POST /api/savings - Create or update saving
+    public function saveSaving(Request $request)
     {
         $validated = $request->validate([
+            'id' => 'nullable|integer',
             'goal' => 'required|string|max:255',
-            'target_amount' => 'required|numeric',
-            'amount' => 'required|numeric',
-            'user_id' => 'required|exists:users,user_id',
+            'target_amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|min:0',
         ]);
 
-        Saving::create($validated);
+        $userId = Auth::id();
 
-        return redirect()->route('saving.index')->with('success', 'Saving created successfully!');
+        // CREATE
+        if (!$request->id || $request->id == 0) {
+            $saving = Saving::create([
+                'user_id' => $userId,
+                'goal' => $request->goal,
+                'target_amount' => $request->target_amount,
+                'amount' => $request->amount,
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Saving created successfully',
+                'data' => $saving
+            ], 201);
+        }
+
+        // UPDATE
+        $saving = Saving::where('saving_id', $request->id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$saving) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Saving not found or not yours'
+            ], 404);
+        }
+
+        $saving->update([
+            'goal' => $request->goal,
+            'target_amount' => $request->target_amount,
+            'amount' => $request->amount,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Saving updated successfully',
+            'data' => $saving
+        ]);
     }
 
-    // Show a single saving
+    // GET /api/savings/{id} - Get a single saving of logged-in user
     public function show($id)
     {
-        $saving = Saving::with('user')->findOrFail($id);
-        return view('saving.show', compact('saving'));
-    }
+        $saving = Saving::where('saving_id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
 
-    // Show form to edit a saving
-    public function edit($id)
-    {
-        $saving = Saving::findOrFail($id);
-        $users = User::all();
-        return view('saving.edit', compact('saving', 'users'));
-    }
+        if (!$saving) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Saving not found or not yours'
+            ], 404);
+        }
 
-    // Update a saving
-    public function update(Request $request, $id)
-    {
-        $saving = Saving::findOrFail($id);
-
-        $validated = $request->validate([
-            'goal' => 'required|string|max:255',
-            'target_amount' => 'required|numeric',
-            'amount' => 'required|numeric',
-            'user_id' => 'required|exists:users,user_id',
+        return response()->json([
+            'status' => true,
+            'data' => $saving
         ]);
-
-        $saving->update($validated);
-
-        return redirect()->route('saving.index')->with('success', 'Saving updated successfully!');
     }
 
-    // Delete a saving
+    // DELETE /api/savings/{id} - Delete a saving
     public function destroy($id)
     {
-        $saving = Saving::findOrFail($id);
+        $saving = Saving::where('saving_id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$saving) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Saving not found or not yours'
+            ], 404);
+        }
+
         $saving->delete();
 
-        return redirect()->route('saving.index')->with('success', 'Saving deleted successfully!');
+        return response()->json([
+            'status' => true,
+            'message' => 'Saving deleted successfully'
+        ]);
     }
 }

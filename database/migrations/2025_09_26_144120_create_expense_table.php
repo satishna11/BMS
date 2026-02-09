@@ -11,25 +11,29 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('expense', function (Blueprint $table) {
-            $table->id('expense_id');
-            $table->decimal('amount',10,2);
-            $table->date('date');
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('category_id');
-            $table->timestamps();
 
 
-            $table->foreign('user_id')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('cascade');
+    Schema::create('expenses', function (Blueprint $table) {
+    $table->bigIncrements('expense_id');
+    $table->decimal('amount', 10, 2);
+    $table->date('date');
+    $table->text('description')->nullable();
+    $table->unsignedBigInteger('user_id');
+    $table->unsignedBigInteger('category_id');
+    $table->timestamps();
 
-            $table->foreign('category_id')
-                  ->references('category_id')
-                  ->on('categories')
-                  ->onDelete('cascade');
-        });
+    $table->foreign('user_id')
+          ->references('id') // matches users table
+          ->on('users')
+          ->onDelete('cascade');
+
+    $table->foreign('category_id')
+          ->references('category_id')
+          ->on('categories')
+          ->onDelete('cascade');
+});
+
+
     }
 
     /**

@@ -2,65 +2,38 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * @mixin \Laravel\Sanctum\HasApiTokens
+ */
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
-    protected $primary_key = 'user_id';
-
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
+    protected $fillable = ['name', 'email', 'password'];
+    protected $hidden = ['password', 'remember_token'];
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
     ];
+    public function income()
+    {
+        return $this->hasMany(Income::class, 'user_id', 'id');
+    }
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    public function expense()
+    {
+        return $this->hasMany(Expense::class, 'user_id', 'id');
+    }
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    public function budget()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->hasOne(Budget::class, 'user_id', 'id');
     }
-    public function incomes()
-    {
-        return $this->hasMany(Income::class, 'user_id', 'user_id');
-    }
-    public function notifications()
-    {
-        return $this->hasMany(Notification::class,'user_id','user_id');
-    }
-       public function expense()
-    {
-        return $this->hasMany(Expense::class,'user_id','user_id');
-    }
-      public function budget()
-    {
-        return $this->hasMany(Budget::class,'budget_id','budget_id');
-    }
+
+
 }

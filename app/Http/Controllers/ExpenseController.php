@@ -4,71 +4,125 @@ namespace App\Http\Controllers;
 
 use App\Models\Expense;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Auth;
+use \Illuminate\Routing\Controller;
 class ExpenseController extends Controller
 {
-    // Show all expenses
+    // Require authentication for all actions
+    public function __construct()
+    {
+        $this->middleware('auth:sanctum');
+    }
+
+    // Get all expenses of logged-in user
     public function index()
     {
-        // Eager load relationships to avoid N+1 queries
-        $expenses = Expense::with(['user', 'category'])->get();
+        $expenses = Expense::with(['category'])
+            ->where('user_id', Auth::id())  // FIXED
+            ->get();
 
-        return view('expense.index', compact('expenses'));
+        return response()->json([
+            'status' => true,
+            'data' => $expenses
+        ]);
     }
 
-    public function create()
+    // Create or Update Expense
+    public function saveExpense(Request $request)
     {
-        // Return a form to add new expense
-        return view('expense.create');
-    }
-
-    public function store(Request $request)
-    {
-        // Validate input
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,user_id',
-            'category_id' => 'required|exists:category,category_id',
-            'amount' => 'required|numeric',
-            'date' => 'required|date'
+            'id' => 'nullable|integer',
+            'category_id' => 'required|exists:categories,category_id',
+            'amount' => 'required|numeric|min:0',
+            'date' => 'required|date',
+
         ]);
 
-        Expense::create($validated);
+        $userId = Auth::id(); // logged-in user ID
 
-        return redirect()->route('expense.index')->with('success', 'Expense added successfully!');
-    }
+        // CREATE
+        if (!$request->id || $request->id == 0) {
 
-    public function show($id)
-    {
-        $expense = Expense::with(['user', 'category'])->findOrFail($id);
-        return view('expense.show', compact('expense'));
-    }
+            $expense = Expense::create([
+                'user_id' => $userId,
+                'category_id' => $request->category_id,
+                'amount' => $request->amount,
+                'date' => $request->date,
 
-    public function edit($id)
-    {
-        $expense = Expense::findOrFail($id);
-        return view('expense.edit', compact('expense'));
-    }
+            ]);
 
-    public function update(Request $request, $id)
-    {
-        $expense = Expense::findOrFail($id);
+            return response()->json([
+                'status' => true,
+                'message' => 'Expense created successfully',
+                'data' => $expense
+            ]);
+        }
 
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,user_id',
-            'category_id' => 'required|exists:category,category_id',
-            'amount' => 'required|numeric',
-            'date' => 'required|date'
+        // UPDATE
+        $expense = Expense::where('expense_id', $request->id)
+            ->where('user_id', $userId) // ensure logged-in user owns it
+            ->first();
+
+        if (!$expense) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Expense not found or not yours'
+            ], 404);
+        }
+
+        $expense->update([
+            'category_id' => $request->category_id,
+            'amount' => $request->amount,
+            'date' => $request->date,
+
         ]);
 
-        $expense->update($validated);
-
-        return redirect()->route('expense.index')->with('success', 'Expense updated successfully!');
+        return response()->json([
+            'status' => true,
+            'message' => 'Expense updated successfully',
+            'data' => $expense
+        ]);
     }
+     public function show($id)
+    {
+        $expenses = Expense::where('expense_id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$expenses) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Expense not found or not yours'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $expenses
+        ], 200);
+    }
+
+    // Delete expense
     public function destroy($id)
     {
-        $expense = Expense::findOrFail($id);
+        $userId = Auth::id();
+
+        $expense = Expense::where('expense_id', $id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$expense) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Expense not found or not yours'
+            ], 404);
+        }
+
         $expense->delete();
 
-        return redirect()->route('expense.index')->with('success', 'Expense deleted successfully!');
+        return response()->json([
+            'status' => true,
+            'message' => 'Expense deleted successfully'
+        ]);
     }
 }

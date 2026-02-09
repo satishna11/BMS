@@ -5,84 +5,117 @@ namespace App\Http\Controllers;
 use App\Models\Income;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-
-use function Pest\Laravel\delete;
+use \Illuminate\Routing\Controller;
 
 class IncomeController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct()
+    {
+        $this->middleware('auth:sanctum'); // Require authentication
+    }
+
+    // GET /api/income - list all incomes for logged-in user
     public function index()
     {
-        $incomes=Income::all();
-        return view('income.index',compact('incomes'));
+        $incomes = Income::where('user_id', Auth::id())->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $incomes
+        ], 200);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        return view('income.create');
+    // POST /api/income/save - create or update income
+    public function saveIncome(Request $request)
+{
+    $validated = $request->validate([
+        'id' => 'nullable|integer',
+        'source' => 'required|string|max:255',
+        'amount' => 'required|numeric|min:0',
+        'date' => 'required|date',
+    ]);
+
+    $userId = Auth::id();
+
+    // CREATE
+    if (!isset($validated['id']) || $validated['id'] == 0) {
+        $income = Income::create([
+            'user_id' => $userId,
+            'source' => $validated['source'],
+            'amount' => $validated['amount'],
+            'date' => $validated['date'],
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Income created successfully!',
+            'data' => $income
+        ], 201);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        $validated=$request->validate(
-            [
-                'source'=>'rewuired|string|max:255',
-                'amount'=>'required|numeric|min:0',
-                'date'=>'required|date',
-             ]
-            );
-            $validated['user_id']=Auth::id();
-            Income::create($validated);
-            return redirect()->route('income.index')->with('success','income added successfullly');
+    // UPDATE
+    $income = Income::where('income_id', $validated['id'])
+        ->where('user_id', $userId)
+        ->first();
 
+    if (!$income) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Income not found or not yours'
+        ], 404);
     }
 
-    public function show(string $id)
-    {
-        $income=Income::with('user')->findOrFail($id);
-        return view('income.show',compact('income'));
+    $income->update([
+        'source' => $validated['source'],
+        'amount' => $validated['amount'],
+        'date' => $validated['date'],
+    ]);
 
+    return response()->json([
+        'status' => true,
+        'message' => 'Income updated successfully!',
+        'data' => $income
+    ], 200);
+}
+    // GET /api/income/{id} - get a single income
+    public function show($id)
+    {
+        $income = Income::where('income_id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$income) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Income not found or not yours'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $income
+        ], 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    // DELETE /api/income/{id} - delete income
+    public function destroy($id)
     {
-        $incomes=Income::findOrfail($id);
-        return view('income.edit',compact('incomes'));
-    }
-    public function update(Request $request, string $id)
-    {
-        $income=Income::findOrfail($id);
-         $validated=$request->validate(
-            [
-                'source'=>'required|string|max:255',
-                'amount'=>'required|numeric|min:0',
-                'date'=>'required|date',
-             ]
-            );
-            $income->update($income);
-            return redirect()->route('income.index')->with('success','income updated successfully');
+        $income = Income::where('income_id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
 
-    }
+        if (!$income) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Income not found or not yours'
+            ], 404);
+        }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        $income=Income::findOrfail($id);
         $income->delete();
-        return redirect()->route('income.index')->with('success', 'Income deleted successfully!');
 
+        return response()->json([
+            'status' => true,
+            'message' => 'Income deleted successfully!'
+        ], 200);
     }
 }

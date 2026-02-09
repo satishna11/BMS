@@ -7,18 +7,20 @@ use Illuminate\Database\Eloquent\Model;
 
 class Saving extends Model
 {
-
     use HasFactory;
-    protected $table='saving';
-    protected $primaryKey='saving_id';
-    protected $fillable=[
+
+    protected $table = 'saving';
+    protected $primaryKey = 'saving_id';
+    protected $fillable = [
         'goal',
         'target_amount',
         'amount',
         'user_id'
-
     ];
-    public function user(){
-        return $this->belongsTo(User::class,'user_id','user_id');
+
+    // Updated relationship to match users.id
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 }

@@ -5,71 +5,73 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Routing\Controller;
+
 class UserController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Force JSON responses for all API requests.
+     */
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $request->headers->set('Accept', 'application/json');
+            return $next($request);
+        });
+    }
+
+    /**
+     * Display a listing of users.
      */
     public function index()
     {
-       $users = User::all();
-       return view('users.index', compact('users'));
-
-    }
-    public function create()
-    {
-        return view('users.create');
+        $users = User::all();
+        return response()->json($users);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created user.
      */
     public function store(Request $request)
     {
-        $validated=$request->validate(
-            [
-                'name'=>'required|string|max:100',
-                'email'=>'required|email|unique:users,email',
-                'password'=>'required|min:6|confirmed',
-            ]
-            );
-            $validated['password'] = Hash::make($validated['password']);
-            User::create($validated);
-            return redirect()->route('user.index')->with('success','user created successfully');
+        $validated = $request->validate([
+            'name' => 'required|string|max:100',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:6|confirmed',
+        ]);
 
+        $validated['password'] = Hash::make($validated['password']);
+
+        $user = User::create($validated);
+
+        return response()->json([
+            'message' => 'User created successfully',
+            'user' => $user
+        ], 201);
     }
 
     /**
-     * Display the specified resource.
+     * Display a specific user.
      */
-    public function show(string $id)
+    public function show($user_id)
     {
-    $user=User::with([
-        'income',
-        'expense',
-        'budget',
-        'notification'
-    ])->findOrFail($id);
-    
-    return view('users.show',compact('user'));
+        // Fix: Use correct relationship names
+        $user = User::with(['income', 'expense', 'budget', 'notification'])->findOrFail($user_id);
+
+        return response()->json($user);
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Update a specific user.
      */
-    public function edit(string $id)
+    public function update(Request $request, $user_id)
     {
-        $user = User::findOrFail($id);
-        return view('users.edit', compact('user'));
-    }
-
-  public function update(Request $request, string $id)
-    {
-        $user = User::findOrFail($id);
+        $user = User::findOrFail($user_id);
 
         $validated = $request->validate([
             'name' => 'required|string|max:100',
-            'email' => 'required|email|unique:users,email,' . $user->user_id . ',user_id',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+
             'password' => 'nullable|min:6|confirmed',
         ]);
 
@@ -81,19 +83,22 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        return redirect()->route('users.index')->with('success', 'User updated successfully!');
+        return response()->json([
+            'message' => 'User updated successfully',
+            'user' => $user
+        ]);
     }
 
-
     /**
-     * Remove the specified resource from storage.
+     * Remove a specific user.
      */
-    public function destroy(string $id)
+    public function destroy($user_id)
     {
-        $user = User::findOrFail($id);
+        $user = User::findOrFail($user_id);
         $user->delete();
 
-        return redirect()->route('users.index')->with('success', 'User deleted successfully!');
-
+        return response()->json([
+            'message' => 'User deleted successfully'
+        ]);
     }
 }
