@@ -3,6 +3,17 @@ import 'package:flutter/material.dart';
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
+  // ===== Sidebar Menu Data =====
+  static final Map<String, Map<String, String>> sidebarMenu = {
+    "Income": {"Add Income": "/add-income", "View Income": "/view-income"},
+    "Expenses": {
+      "Add Expense": "/add-expense",
+      "View Expense": "/view-expense",
+    },
+    "Budget": {"Add Budget": "/add-budget", "View Budget": "/view-budget"},
+    "Report": {"View Report": "/report"},
+  };
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -16,16 +27,16 @@ class DashboardScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: ListView(
               children: [
-                sidebarTitle("Dashboard"),
-                sidebarSection("Income", ["Add Income", "View Income"]),
-                sidebarSection("Expenses", ["Add Expense", "View Expense"]),
-                sidebarSection("Budget", ["Add Budget", "View Budget"]),
-                sidebarSection("Report", ["View Report"]),
+                sidebarTitle(context),
+                ...sidebarMenu.entries.map(
+                  (section) =>
+                      sidebarSection(context, section.key, section.value),
+                ),
               ],
             ),
           ),
 
-          // ===== Main Dashboard Content =====
+          // ===== Main Content =====
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -38,7 +49,6 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Summary Cards
                   Row(
                     children: [
                       dashboardCard("Total Income", "Rs. 50,000"),
@@ -51,7 +61,6 @@ class DashboardScreen extends StatelessWidget {
 
                   const SizedBox(height: 30),
 
-                  // Recent Transactions
                   const Text(
                     "Recent Expenses",
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -66,11 +75,11 @@ class DashboardScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: ListView(
-                        children: [
-                          transactionRow("Grocery", "Rs. 1,200", "Jan 10"),
-                          transactionRow("Bus Fare", "Rs. 200", "Jan 11"),
-                          transactionRow("Shopping", "Rs. 3,000", "Jan 12"),
-                          transactionRow("Education", "Rs. 5,000", "Jan 13"),
+                        children: const [
+                          TransactionRow("Grocery", "Rs. 1,200", "Jan 10"),
+                          TransactionRow("Bus Fare", "Rs. 200", "Jan 11"),
+                          TransactionRow("Shopping", "Rs. 3,000", "Jan 12"),
+                          TransactionRow("Education", "Rs. 5,000", "Jan 13"),
                         ],
                       ),
                     ),
@@ -84,24 +93,44 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // ===== Sidebar Helpers =====
-  Widget sidebarTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+  // ===== Sidebar Widgets =====
+
+  Widget sidebarTitle(BuildContext context) {
+    return ListTile(
+      title: const Text(
+        "Dashboard",
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      onTap: () {
+        Navigator.pushReplacementNamed(context, '/');
+      },
     );
   }
 
-  Widget sidebarSection(String title, List<String> items) {
+  Widget sidebarSection(
+    BuildContext context,
+    String title,
+    Map<String, String> items,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 12),
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ...items.map(
-          (e) => Padding(
-            padding: const EdgeInsets.only(left: 12, top: 6),
-            child: Text(e),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        ...items.entries.map(
+          (entry) => ListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.only(left: 16),
+            title: Text(entry.key),
+            onTap: () {
+              Navigator.pushNamed(context, entry.value);
+            },
           ),
         ),
       ],
@@ -109,6 +138,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   // ===== Dashboard Cards =====
+
   Widget dashboardCard(String title, String value) {
     return Expanded(
       child: Container(
@@ -131,9 +161,19 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  // ===== Transaction Row =====
-  static Widget transactionRow(String title, String amount, String date) {
+// ===== Transaction Row =====
+
+class TransactionRow extends StatelessWidget {
+  final String title;
+  final String amount;
+  final String date;
+
+  const TransactionRow(this.title, this.amount, this.date, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
