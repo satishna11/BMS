@@ -102,7 +102,8 @@ class DashboardScreen extends StatelessWidget {
         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       ),
       onTap: () {
-        Navigator.pushReplacementNamed(context, '/');
+        // ⚡ Fixed: '/' does not exist, use '/dashboard'
+        Navigator.pushReplacementNamed(context, '/dashboard');
       },
     );
   }
@@ -129,6 +130,7 @@ class DashboardScreen extends StatelessWidget {
             contentPadding: const EdgeInsets.only(left: 16),
             title: Text(entry.key),
             onTap: () {
+              // ⚡ Navigate to route safely
               Navigator.pushNamed(context, entry.value);
             },
           ),

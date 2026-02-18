@@ -28,6 +28,11 @@ class MyApp extends StatelessWidget {
         '/expense': (context) => const ExpenseScreen(),
         '/income': (context) => const IncomeScreen(),
         '/report': (context) => const ReportScreen(),
+
+        // ADD THESE 
+        '/add-income': (context) => const IncomeScreen(),
+        '/add-expense': (context) => const ExpenseScreen(),
+        '/add-budget': (context) => const BudgetScreen(),
       },
     );
   }
